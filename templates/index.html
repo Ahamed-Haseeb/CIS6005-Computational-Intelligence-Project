@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bank campaign subscription prediction dashboard">
+  <title>ProspectIQ | Campaign Prediction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="brand" href="/" aria-label="ProspectIQ home">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>Prospect<span>IQ</span></span>
+      </a>
+
+      <nav class="nav-list">
+        <a class="nav-item active" href="#prediction" aria-current="page">
+          <span class="nav-icon grid-icon" aria-hidden="true"></span>
+          <span>Prediction</span>
+        </a>
+        <a class="nav-item" href="#history">
+          <span class="nav-icon clock-icon" aria-hidden="true"></span>
+          <span>Recent activity</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="model-mini">
+          <span class="status-dot {{ 'online' if model_exists else 'offline' }}"></span>
+          <div>
+            <strong>{{ 'Model available' if model_exists else 'Model missing' }}</strong>
+            <span>Random Forest · {{ model_size_gb }} GB</span>
+          </div>
+        </div>
+        <p>Local inference workspace</p>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button class="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+        <div>
+          <p class="eyebrow">Campaign intelligence</p>
+          <h1>Subscription predictor</h1>
+        </div>
+        <div class="topbar-status" id="modelStatus">
+          <span class="status-dot {{ 'online' if model_exists else 'offline' }}"></span>
+          <span>{{ 'Engine ready' if model_exists else 'Model unavailable' }}</span>
+        </div>
+      </header>
+
+      <section class="metrics" aria-label="Model summary">
+        <article class="metric">
+          <span class="metric-label">Model type</span>
+          <strong>Random Forest</strong>
+          <span class="metric-note">300 estimators</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Training records</span>
+          <strong>750,000</strong>
+          <span class="metric-note">Bank marketing data</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Model inputs</span>
+          <strong>16</strong>
+          <span class="metric-note">43 encoded features</span>
+        </article>
+        <article class="metric accent-metric">
+          <span class="metric-label">Baseline positive rate</span>
+          <strong>12.1%</strong>
+          <span class="metric-note">Training population</span>
+        </article>
+      </section>
+
+      <section class="workspace" id="prediction">
+        <div class="form-panel">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">New assessment</p>
+              <h2>Customer profile</h2>
+            </div>
+            <button class="text-button" id="resetButton" type="button">Reset fields</button>
+          </div>
+
+          <form id="predictionForm" novalidate>
+            <fieldset>
+              <legend>Personal details</legend>
+              <div class="field-grid three-column">
+                <label class="field">
+                  <span>Age</span>
+                  <input type="number" name="age" min="18" max="100" value="{{ defaults.age }}" required>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Occupation</span>
+                  <select name="job" required>
+                    {% for item in categories.job %}<option value="{{ item }}" {{ 'selected' if item == defaults.job }}>{{ item | replace('-', ' ') | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Marital status</span>
+                  <select name="marital" required>
+                    {% for item in categories.marital %}<option value="{{ item }}" {{ 'selected' if item == defaults.marital }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Education</span>
+                  <select name="education" required>
+                    {% for item in categories.education %}<option value="{{ item }}" {{ 'selected' if item == defaults.education }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Account balance</span>
+                  <div class="input-prefix"><span>$</span><input type="number" name="balance" min="-1000000" max="1000000" step="0.01" value="{{ defaults.balance }}" required></div>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Credit in default</span>
+                  <select name="default" required>
+                    {% for item in categories.default %}<option value="{{ item }}" {{ 'selected' if item == defaults.default }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Loans &amp; contact</legend>
+              <div class="field-grid three-column">
+                <label class="field">
+                  <span>Housing loan</span>
+                  <select name="housing" required>
+                    {% for item in categories.housing %}<option value="{{ item }}" {{ 'selected' if item == defaults.housing }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Personal loan</span>
+                  <select name="loan" required>
+                    {% for item in categories.loan %}<option value="{{ item }}" {{ 'selected' if item == defaults.loan }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Contact channel</span>
+                  <select name="contact" required>
+                    {% for item in categories.contact %}<option value="{{ item }}" {{ 'selected' if item == defaults.contact }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Current campaign</legend>
+              <div class="field-grid three-column">
+                <label class="field">
+                  <span>Contact day</span>
+                  <input type="number" name="day" min="1" max="31" value="{{ defaults.day }}" required>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Contact month</span>
+                  <select name="month" required>
+                    {% for item in categories.month %}<option value="{{ item }}" {{ 'selected' if item == defaults.month }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Call duration</span>
+                  <div class="input-suffix"><input type="number" name="duration" min="0" max="20000" value="{{ defaults.duration }}" required><span>sec</span></div>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Contacts this campaign</span>
+                  <input type="number" name="campaign" min="1" max="1000" value="{{ defaults.campaign }}" required>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Days since prior contact</span>
+                  <input type="number" name="pdays" min="-1" max="10000" value="{{ defaults.pdays }}" required>
+                  <small class="field-help">Use −1 when never contacted.</small>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field">
+                  <span>Previous contacts</span>
+                  <input type="number" name="previous" min="0" max="10000" value="{{ defaults.previous }}" required>
+                  <small class="field-error"></small>
+                </label>
+                <label class="field span-two">
+                  <span>Previous campaign outcome</span>
+                  <select name="poutcome" required>
+                    {% for item in categories.poutcome %}<option value="{{ item }}" {{ 'selected' if item == defaults.poutcome }}>{{ item | title }}</option>{% endfor %}
+                  </select>
+                  <small class="field-error"></small>
+                </label>
+              </div>
+            </fieldset>
+
+            <div class="form-action">
+              <p id="formMessage" role="alert"></p>
+              <button class="primary-button" type="submit" {{ 'disabled' if not model_exists }}>
+                <span>Run prediction</span>
+                <span class="button-arrow" aria-hidden="true">→</span>
+                <span class="spinner" aria-hidden="true"></span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <aside class="result-panel" aria-live="polite">
+          <div class="result-placeholder" id="resultPlaceholder">
+            <div class="probability-preview" aria-hidden="true"><span>?</span></div>
+            <h2>Awaiting assessment</h2>
+            <p>Complete the customer profile and run the model to see the likelihood of subscription.</p>
+            <div class="signal-list">
+              <span>Probability score</span>
+              <span>Lead segment</span>
+              <span>Model confidence</span>
+            </div>
+          </div>
+
+          <div class="result-content" id="resultContent" hidden>
+            <p class="section-kicker">Prediction result</p>
+            <div class="gauge" id="probabilityGauge" style="--probability: 0">
+              <div class="gauge-center">
+                <strong id="probabilityValue">0%</strong>
+                <span>subscription likelihood</span>
+              </div>
+            </div>
+            <div class="result-verdict">
+              <span class="verdict-badge" id="verdictBadge">Low likelihood</span>
+              <h2 id="verdictTitle">Unlikely to subscribe</h2>
+              <p id="verdictCopy">The model estimates a low probability for this profile.</p>
+            </div>
+            <dl class="result-details">
+              <div><dt>Predicted class</dt><dd id="classValue">0</dd></div>
+              <div><dt>Model confidence</dt><dd id="confidenceValue">0%</dd></div>
+              <div><dt>Estimator</dt><dd id="modelValue">Random Forest</dd></div>
+            </dl>
+            <p class="disclaimer">Use this score as decision support, not as the sole basis for customer treatment.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="history-section" id="history">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">This session</p>
+            <h2>Recent predictions</h2>
+          </div>
+          <button class="text-button" id="clearHistory" type="button" hidden>Clear history</button>
+        </div>
+        <div class="history-empty" id="historyEmpty">Predictions made in this browser session will appear here.</div>
+        <div class="table-wrap" id="historyTable" hidden>
+          <table>
+            <thead><tr><th>Time</th><th>Profile</th><th>Channel</th><th>Likelihood</th><th>Segment</th></tr></thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>
